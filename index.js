@@ -149,6 +149,12 @@ async function run() {
       const result = await bookingtCollection.find(query).toArray();
       res.send(result);
     });
+    app.get("/singleBookings", verifyToken, async (req, res) => {
+      const email = req.query.email;
+      const query = { email };
+      const result = await bookingtCollection.findOne(query);
+      res.send(result);
+    });
 
     // Payment Related Api Payment Intent
     app.post("/create-payment-intent", async (req, res) => {
@@ -168,6 +174,13 @@ async function run() {
       const data = req.body;
       const result = await paymentCollection.insertOne(data);
       await bookingtCollection.deleteMany();
+      res.send(result);
+    });
+
+    app.get("/getMyTicket", verifyToken, async (req, res) => {
+      const { email } = req.query;
+      const query = { email };
+      const result = await paymentCollection.find(query).toArray();
       res.send(result);
     });
   } finally {
