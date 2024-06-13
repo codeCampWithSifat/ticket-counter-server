@@ -5,6 +5,7 @@ const app = express();
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
 const port = process.env.PORT || 3001;
+const stripe = require("stripe")(process.env.PAYMENT_SECRET_KEY);
 
 // use all the middleware
 app.use(cors());
@@ -24,6 +25,12 @@ async function run() {
     await client.connect();
     const userCollection = client.db("TICKET-COUNTER").collection("users");
     const eventCollection = client.db("TICKET-COUNTER").collection("events");
+    const paymentCollection = client
+      .db("TICKET-COUNTER")
+      .collection("payments");
+    const bookingtCollection = client
+      .db("TICKET-COUNTER")
+      .collection("bookings");
 
     const verifyToken = (req, res, next) => {
       if (!req.headers.authorization) {
@@ -125,6 +132,42 @@ async function run() {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await eventCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    // booking related api
+    app.post("/bookings", async (req, res) => {
+      const data = req.body;
+      const result = await bookingtCollection.insertOne(data);
+      console.log(result);
+      res.send(result);
+    });
+
+    app.get("/bookings", verifyToken, async (req, res) => {
+      const email = req.query.email;
+      const query = { email };
+      const result = await bookingtCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    // Payment Related Api Payment Intent
+    app.post("/create-payment-intent", async (req, res) => {
+      const { price } = req.body;
+      const amount = parseInt(price * 100);
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ["card"],
+      });
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
+    });
+
+    app.post("/payments", async (req, res) => {
+      const data = req.body;
+      const result = await paymentCollection.insertOne(data);
+      await bookingtCollection.deleteMany();
       res.send(result);
     });
   } finally {
