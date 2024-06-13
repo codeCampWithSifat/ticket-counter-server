@@ -1,4 +1,4 @@
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require("dotenv").config();
 const express = require("express");
 const app = express();
@@ -55,6 +55,13 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/users", async (req, res) => {
+      const email = req.query.email;
+      const query = { email: email };
+      const result = await userCollection.findOne(query);
+      res.send(result);
+    });
+
     //event related api
     app.post("/events", verifyToken, async (req, res) => {
       const data = req.body;
@@ -64,6 +71,60 @@ async function run() {
 
     app.get("/events", async (req, res) => {
       const result = await eventCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.get("/events/:id", async (req, res) => {
+      const { id } = req.params;
+      const query = { _id: new ObjectId(id) };
+      const result = await eventCollection.findOne(query);
+      res.send(result);
+    });
+
+    app.put("/events/:id", async (req, res) => {
+      const { id } = req.params;
+      const {
+        addEvent,
+        eventName,
+        district,
+        date,
+        address,
+        message,
+        time,
+        image,
+        price,
+        seats,
+        status,
+      } = req.body;
+      const filter = { _id: new ObjectId(id) };
+      const options = { upsert: true };
+      const updateDoc = {
+        $set: {
+          addEvent,
+          eventName,
+          district,
+          date,
+          address,
+          message,
+          time,
+          image,
+          price,
+          seats,
+          status,
+        },
+      };
+      const result = await eventCollection.updateOne(
+        filter,
+        updateDoc,
+        options
+      );
+      res.send(result);
+    });
+
+    app.delete("/events/:id", verifyToken, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await eventCollection.deleteOne(query);
       res.send(result);
     });
   } finally {
